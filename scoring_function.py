@@ -1,14 +1,10 @@
-import math
 import time
 from functools import wraps
-from functools import cache
-
 from scipy.stats import binom
 import pandas as pd
 import numpy as np
+import math
 
-
-import pandas as pd
 pd.options.mode.chained_assignment = None  # default='warn'
 
 # given: theoretical spectrum (only mz values), experimental spectrum (mz and intensity values)
@@ -19,48 +15,25 @@ pd.options.mode.chained_assignment = None  # default='warn'
 # 3. match the peaks of the theoretical spectrum with the peaks of the experimental spectrum with tolerance t
 # 4. calculate the score as the number of matched peaks divided by the total number of peaks in the theoretical spectrum
 
-# def scoring_function(theoretical_spectrum: pd.Series, experimental_spectrum: pd.DataFrame, q: int, t: float) -> (float):
-#     # sort the theoretical spectrum by intensity
-#     theoretical_spectrum = theoretical_spectrum.sort_values(ascending=False)
-#     experimental_spectrum = experimental_spectrum.sort_values(by='intensity', ascending=False)
-#     # divide the mz values of the theoretical spectrum into the windows of 100 Th (unit of mz)
-#     experimental_spectrum['window'] = np.floor(experimental_spectrum['mz'] / 100)
-#
-#     # extract top q peaks for each window
-#     experimental_spectrum = experimental_spectrum.groupby('window').head(q)
-#
-#     # determine n
-#     n = len(theoretical_spectrum)
-#
-#     # match the peaks of the theoretical spectrum with the peaks of the experimental spectrum with tolerance t
-#     matched_peaks = []
-#     for peak in theoretical_spectrum.values:
-#         match_candidates = experimental_spectrum[(experimental_spectrum['mz'] >= peak - t) & (experimental_spectrum['mz'] <= peak + t)]
-#         match_candidates['diff'] = np.abs(match_candidates['mz'] - peak)
-#         match_candidates = match_candidates.sort_values(by='diff', ascending=True)
-#         # select the closest match and remove that specific peak from the experimental spectrum
-#         if not match_candidates.empty:
-#             matched_peaks.append(match_candidates.iloc[0])
-#             experimental_spectrum = experimental_spectrum.drop(match_candidates.index[0])
-#
-#     k = len(matched_peaks)
-#
-#     score = 0.0
-#     for j in range(1, k+1):
-#         score += cached_comb(n,k) * (q / 100)**j * (1 - q / 100)**(n - j)
-#     if score == 0:
-#         score = 1e-10
-#     score = -10 * math.log10(score)
-#     return score
-
-import numpy as np
-import math
-
-import numpy as np
-import math
-
-
 def scoring_function(theoretical_spectrum: np.ndarray, experimental_spectrum: np.ndarray, q: int, t: float) -> float:
+    """
+    Parameters:
+    theoretical_spectrum : np.ndarray
+        A 1D array containing the m/z values of the theoretical spectrum.
+    experimental_spectrum : np.ndarray
+        A 2D array with columns [m/z, intensity] representing the experimental spectrum.
+    q : int
+        The number of top intensity peaks to consider within each window of 100 Th.
+    t : float
+        Mass tolerance in parts per million (ppm).
+    ----------
+    Returns:
+    float
+        The negative logarithm (base 10) of the probability score.
+        Higher values indicate a better match between the spectra.
+        Returns -inf for extremely small probabilities.
+    """
+    
     # Ensure theoretical_spectrum is one-dimensional (m/z values only)
     if theoretical_spectrum.ndim != 1:
         raise ValueError("Theoretical spectrum must be a 1D array containing only m/z values.")

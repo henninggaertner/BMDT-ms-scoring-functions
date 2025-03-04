@@ -3,9 +3,24 @@ import pandas as pd
 import time;
 from functools import wraps
 
-
 def simple_scoring_function(theoretical_spectrum: np.ndarray, experimental_spectrum: np.ndarray,
                             t: int = 20) -> float:
+    """
+    parameters:
+    theoretical_spectrum: np.ndarray
+        Theoretical spectrum to compare against the experimental spectrum
+    experimental_spectrum: np.ndarray
+        Experimental spectrum to compare against the theoretical spectrum
+    t: int
+        Mass tolerance in parts per million (ppm)
+    ----------
+    returns:
+    float
+        The score of the theoretical spectrum against the experimental spectrum.
+        The score is calculated as the number of matched peaks divided by the total number of peaks in the theoretical
+        spectrum.
+    """
+
     # Ensure theoretical_spectrum is one-dimensional (m/z values only)
     if theoretical_spectrum.ndim != 1:
         raise ValueError("Theoretical spectrum must be a 1D array containing only m/z values.")

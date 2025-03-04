@@ -1,5 +1,4 @@
 from random import shuffle
-
 import pandas as pd
 from pyteomics import fasta, parser
 from tqdm import tqdm
