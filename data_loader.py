@@ -1,6 +1,6 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 import pandas as pd
-from pyteomics import fasta, mgf
+from pyteomics import fasta, mgf, mass
 import re
 from tqdm import tqdm
 from .utils import calculate_peptide_mass, get_scan_id
