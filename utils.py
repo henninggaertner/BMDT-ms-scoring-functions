@@ -1,5 +1,6 @@
 from typing import List, Tuple
 import re
+import pandas as pd
 from pyteomics import mass, parser
 
 def calculate_peptide_mass(peptide_mz: float, charge: int) -> float:
@@ -11,6 +12,14 @@ def get_scan_id(text: str) -> str:
     """Extract scan ID from spectrum title."""
     matches = re.findall(r'scan=\d+', text)
     return matches[0].split('=')[1]
+
+def calculate_fdr(df: pd.DataFrame) -> pd.DataFrame:
+    """Calculate false discovery rate from a DataFrame."""
+    df = df.sort_values('match_score', ascending=False)
+    df['cumulative_target'] = df['is_target'].cumsum() # TP
+    df['cumulative_decoy'] = df['is_decoy'].cumsum() # FP
+    df['fdr'] = df['cumulative_decoy'] / (df['cumulative_target'] + df['cumulative_decoy']) # FP / (TP + FP)
+    return df
 
 def generate_fragments(peptide: str, types: Tuple[str, ...]=('b', 'y'), maxcharge: int=1) -> List[float]:
     """Generate theoretical fragment masses for a peptide."""

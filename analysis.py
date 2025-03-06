@@ -31,6 +31,9 @@ def main():
         n_processes
     )
     
+    # Calculate FDR
+    result_df = matcher.calculate_fdr(result_df)
+
     # Save results
     result_df.to_csv("results/matched_spectra_df.csv")
 
