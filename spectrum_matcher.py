@@ -4,14 +4,15 @@ import numpy as np
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from tqdm import tqdm
-from .utils import generate_fragments
+from utils import generate_fragments
 
 class SpectrumMatcher:
     def __init__(self, peptide_df: pd.DataFrame, tolerance: float = 10e-6):
         self.peptide_df = peptide_df
         self.tolerance = tolerance
 
-    def match_spectrum(self, spectrum: Dict[str, Any], scoring_function: Callable) -> Dict[str, Any]:
+    def match_spectrum(self, spectrum: Dict[str, Any], scoring_function: Callable, is_target_db: bool) -> Dict[str,
+    Any]:
         """Match a single spectrum against peptide candidates."""
         candidates = self._find_candidates(spectrum['precursor_mass'])
         if len(candidates) == 0:
@@ -21,7 +22,7 @@ class SpectrumMatcher:
         if best_match[0] == -1:
             return None
 
-        return self._create_match_result(spectrum, best_match, candidates)
+        return self._create_match_result(spectrum, best_match, candidates, is_target_db)
 
     def match_spectra_parallel(self, 
                              spectra_df: pd.DataFrame, 
@@ -31,18 +32,19 @@ class SpectrumMatcher:
         matched_spectra_df_slices = []
 
         for scoring_function in scoring_functions:
-            process_func = partial(self.match_spectrum, scoring_function=scoring_function)
-            
-            with ProcessPoolExecutor(max_workers=n_processes) as executor:
-                results = list(tqdm(
-                    executor.map(process_func, [spectrum for _, spectrum in spectra_df.iterrows()]),
-                    total=len(spectra_df),
-                    desc=f"Scoring using {scoring_function.__name__}"
-                ))
+            for is_target_db, database_df in self.peptide_df.groupby('is_target'):
+                process_func = partial(self.match_spectrum, scoring_function=scoring_function)
 
-            valid_results = [r for r in results if r is not None]
-            if valid_results:
-                matched_spectra_df_slices.append(pd.DataFrame(valid_results))
+                with ProcessPoolExecutor(max_workers=n_processes) as executor:
+                    results = list(tqdm(
+                        executor.map(process_func, [spectrum for _, spectrum in spectra_df.iterrows()]),
+                        total=len(spectra_df),
+                        desc=f"Scoring using {scoring_function.__name__}"
+                    ))
+
+                valid_results = [r for r in results if r is not None]
+                if valid_results:
+                    matched_spectra_df_slices.append(pd.DataFrame(valid_results))
 
         if not matched_spectra_df_slices:
             return pd.DataFrame()
@@ -82,7 +84,8 @@ class SpectrumMatcher:
     def _create_match_result(self, 
                            spectrum: Dict[str, Any], 
                            best_match: tuple, 
-                           candidates: pd.DataFrame) -> Dict[str, Any]:
+                           candidates: pd.DataFrame,
+                           is_target_db: bool) -> Dict[str, Any]:
         """Create result dictionary for a matched spectrum."""
         match_score, sequence, source_protein_id = best_match
         bm = candidates[candidates['sequence'] == sequence]
@@ -98,7 +101,8 @@ class SpectrumMatcher:
             'peptide_mass': bm['peptide_mass'].values[0],
             'fragments': np.array(list(generate_fragments(sequence))),
             'match_score': match_score,
-            'scan_id': spectrum['scan_id']
+            'scan_id': spectrum['scan_id'],
+            'is_target': is_target_db,
         }
 
     @staticmethod

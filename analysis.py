@@ -1,9 +1,10 @@
 import multiprocessing as mp
-from .data_loader import DataLoader
-from .spectrum_matcher import SpectrumMatcher
-from .scoring_function import optimize_q_wrapper
-from .simple_scoring_function import simple_scoring_function
-from .visualization import SpectrumVisualizer
+from data_loader import DataLoader
+from spectrum_matcher import SpectrumMatcher
+from utils import calculate_fdr
+from scoring_function import optimize_q_wrapper
+from simple_scoring_function import simple_scoring_function
+from visualization import SpectrumVisualizer
 
 def main():
     loader = DataLoader()
@@ -15,15 +16,17 @@ def main():
 
     # TODO: Load MGF files
     mgf_files = [
-        "data/new_CTR03_BA46_INSOLUBLE_01.mgf", # example
+        "new_CTR03_BA46_INSOLUBLE_01.mgf",
+        "new_CTR08_BA46_INSOLUBLE_01.mgf",
+        "new_CTR45_BA46_INSOLUBLE_01.mgf"
     ]
-    mgf_df = loader.load_mgf_files(mgf_files)
+    mgf_df = loader.load_mgf_files(mgf_files, "data/mgf_df.csv")
 
     matcher = SpectrumMatcher(peptide_df)
 
     # Run analysis
     scoring_functions = [optimize_q_wrapper, simple_scoring_function] # Andromeda and simple scoring from lecture
-    n_processes = mp.cpu_count() - 1
+    n_processes = 15
     
     result_df = matcher.match_spectra_parallel(
         mgf_df,
@@ -32,7 +35,10 @@ def main():
     )
     
     # Calculate FDR
-    result_df = matcher.calculate_fdr(result_df)
+    try:
+        result_df = calculate_fdr(result_df)
+    except Exception as e:
+        print(f"Error while calculating FDR: {e}")
 
     # Save results
     result_df.to_csv("results/matched_spectra_df.csv")

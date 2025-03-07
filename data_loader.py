@@ -3,8 +3,8 @@ import pandas as pd
 from pyteomics import fasta, mgf, mass
 import re
 from tqdm import tqdm
-from .utils import calculate_peptide_mass, get_scan_id
-from .decoy_database import generate_decoy_peptides
+from utils import calculate_peptide_mass, get_scan_id
+from decoy_database import generate_decoy_peptides
 
 class DataLoader:
     def load_fasta(self, fasta_path: str) -> pd.DataFrame:
@@ -28,18 +28,28 @@ class DataLoader:
     def _generate_peptide_df(self, fasta_df: pd.DataFrame, save_path: str) -> pd.DataFrame:
         """Generate peptide database from FASTA data."""
         results = generate_decoy_peptides(fasta_df)
-        peptide_df = pd.concat([results['target_peptides'], results['decoy_peptides']])
-        peptide_df = self._process_peptide_df(peptide_df)
+        target_peptide_df, decoy_peptide_df = results['target_peptides'], results['decoy_peptides']
+        target_peptide_df = self._process_peptide_df(target_peptide_df)
+        target_peptide_df['is_target'] = True
+        decoy_peptide_df = self._process_peptide_df(decoy_peptide_df)
+        decoy_peptide_df['is_target'] = False
+        peptide_df = pd.concat([target_peptide_df, decoy_peptide_df])
         peptide_df.to_csv(save_path)
         return peptide_df
 
-    def load_mgf_files(self, file_list: List[str]) -> pd.DataFrame:
+    def load_mgf_files(self, file_list: List[str], save_path: str) -> pd.DataFrame:
         """Load mass spectrometry data from MGF files."""
-        mgf_df_slices = []
-        for file in file_list:
-            with mgf.read(file) as reader:
-                mgf_df_slices.extend(self._process_mgf_file(file, reader))
-        return pd.concat(mgf_df_slices)
+        try:
+            return pd.read_csv(save_path)
+        except FileNotFoundError:
+            mgf_df_slices = []
+            for file in file_list:
+                with mgf.read(file) as reader:
+                    mgf_df_slices.extend(self._process_mgf_file(file, reader))
+
+            mgf_df = pd.concat(mgf_df_slices)
+            mgf_df.to_csv(save_path)
+            return mgf_df
 
     def _process_mgf_file(self, filename: str, reader: Any) -> List[pd.DataFrame]:
         """Process a single MGF file."""
