@@ -17,7 +17,7 @@ def calculate_fdr(df: pd.DataFrame) -> pd.DataFrame:
     """Calculate false discovery rate from a DataFrame."""
     df = df.sort_values('match_score', ascending=False)
     df['cumulative_target'] = df['is_target'].cumsum() # TP
-    df['cumulative_decoy'] = df['is_decoy'].cumsum() # FP
+    df['cumulative_decoy'] = (~df['is_target']).cumsum()  # FP
     df['fdr'] = df['cumulative_decoy'] / (df['cumulative_target'] + df['cumulative_decoy']) # FP / (TP + FP)
     return df
 
