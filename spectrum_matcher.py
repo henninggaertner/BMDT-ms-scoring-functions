@@ -1,8 +1,6 @@
 from typing import Dict, Any, List, Callable
 import pandas as pd
 import numpy as np
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial
 from tqdm import tqdm
 from utils import generate_fragments
 
@@ -24,33 +22,29 @@ class SpectrumMatcher:
 
         return self._create_match_result(spectrum, best_match, candidates, is_target_db)
 
-    def match_spectra_parallel(self, 
-                             spectra_df: pd.DataFrame, 
-                             scoring_functions: List[Callable], 
-                             n_processes: int) -> pd.DataFrame:
-        """Match multiple spectra in parallel using multiple scoring functions."""
-        matched_spectra_df_slices = []
+    def match_spectra(self, 
+                     spectra_df: pd.DataFrame, 
+                     scoring_functions: List[Callable]) -> pd.DataFrame:
+        """Match spectra using multiple scoring functions sequentially."""
+        matched_spectra = []
 
         for scoring_function in scoring_functions:
+            print(f"Scoring using {scoring_function.__name__}")
             for is_target_db, database_df in self.peptide_df.groupby('is_target'):
-                process_func = partial(self.match_spectrum, scoring_function=scoring_function,
-                                       is_target_db=is_target_db, database_df=database_df)
+                for _, spectrum in tqdm(spectra_df.iterrows(), total=len(spectra_df)):
+                    result = self.match_spectrum(
+                        spectrum, 
+                        scoring_function=scoring_function,
+                        is_target_db=is_target_db, 
+                        database_df=database_df
+                    )
+                    if result is not None:
+                        matched_spectra.append(result)
 
-                with ProcessPoolExecutor(max_workers=n_processes) as executor:
-                    results = list(tqdm(
-                        executor.map(process_func, [spectrum for _, spectrum in spectra_df.iterrows()]),
-                        total=len(spectra_df),
-                        desc=f"Scoring using {scoring_function.__name__}"
-                    ))
-
-                valid_results = [r for r in results if r is not None]
-                if valid_results:
-                    matched_spectra_df_slices.append(pd.DataFrame(valid_results))
-
-        if not matched_spectra_df_slices:
+        if not matched_spectra:
             return pd.DataFrame()
 
-        return self._process_results(pd.concat(matched_spectra_df_slices))
+        return self._process_results(pd.DataFrame(matched_spectra))
 
     def _find_candidates(self, precursor_mass: float, database_df: pd.DataFrame) -> pd.DataFrame:
         """Find peptide candidates within mass tolerance."""
