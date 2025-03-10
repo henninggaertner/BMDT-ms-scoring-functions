@@ -11,10 +11,10 @@ class SpectrumMatcher:
         self.peptide_df = peptide_df
         self.tolerance = tolerance
 
-    def match_spectrum(self, spectrum: Dict[str, Any], scoring_function: Callable, is_target_db: bool) -> Dict[str,
-    Any]:
+    def match_spectrum(self, spectrum: Dict[str, Any], scoring_function: Callable, is_target_db: bool, database_df:
+    pd.DataFrame) -> dict[str, Any]:
         """Match a single spectrum against peptide candidates."""
-        candidates = self._find_candidates(spectrum['precursor_mass'])
+        candidates = self._find_candidates(spectrum['precursor_mass'], database_df=database_df)
         if len(candidates) == 0:
             return None
 
@@ -33,7 +33,8 @@ class SpectrumMatcher:
 
         for scoring_function in scoring_functions:
             for is_target_db, database_df in self.peptide_df.groupby('is_target'):
-                process_func = partial(self.match_spectrum, scoring_function=scoring_function, is_target_db=is_target_db)
+                process_func = partial(self.match_spectrum, scoring_function=scoring_function,
+                                       is_target_db=is_target_db, database_df=database_df)
 
                 with ProcessPoolExecutor(max_workers=n_processes) as executor:
                     results = list(tqdm(
@@ -51,11 +52,11 @@ class SpectrumMatcher:
 
         return self._process_results(pd.concat(matched_spectra_df_slices))
 
-    def _find_candidates(self, precursor_mass: float) -> pd.DataFrame:
+    def _find_candidates(self, precursor_mass: float, database_df: pd.DataFrame) -> pd.DataFrame:
         """Find peptide candidates within mass tolerance."""
-        return self.peptide_df[
-            (precursor_mass >= self.peptide_df['peptide_mass'] * (1 - self.tolerance)) & 
-            (precursor_mass <= self.peptide_df['peptide_mass'] * (1 + self.tolerance))
+        return database_df[
+            (precursor_mass >= database_df['peptide_mass'] * (1 - self.tolerance)) &
+            (precursor_mass <= database_df['peptide_mass'] * (1 + self.tolerance))
         ]
 
     def _find_best_match(self, 
