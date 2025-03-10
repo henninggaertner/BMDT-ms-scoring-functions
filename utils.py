@@ -54,6 +54,7 @@ def calculate_fdr(df: pd.DataFrame, target_fdr: float = 0.01) -> pd.DataFrame:
             # Add threshold information
             filtered_df['score_threshold'] = score_threshold
             filtered_df['achieved_fdr'] = filtered_df.loc[threshold_idx, 'fdr']
+            filtered_df['scoring_function'] = scoring_function
 
             result_dfs.append(filtered_df)
 
