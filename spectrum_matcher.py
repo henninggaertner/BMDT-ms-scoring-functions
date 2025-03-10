@@ -33,7 +33,7 @@ class SpectrumMatcher:
 
         for scoring_function in scoring_functions:
             for is_target_db, database_df in self.peptide_df.groupby('is_target'):
-                process_func = partial(self.match_spectrum, scoring_function=scoring_function)
+                process_func = partial(self.match_spectrum, scoring_function=scoring_function, is_target_db=is_target_db)
 
                 with ProcessPoolExecutor(max_workers=n_processes) as executor:
                     results = list(tqdm(

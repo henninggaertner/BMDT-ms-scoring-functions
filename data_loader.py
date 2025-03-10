@@ -1,5 +1,6 @@
 from typing import List, Dict, Any
 import pandas as pd
+import os
 from pyteomics import fasta, mgf, mass
 import re
 from tqdm import tqdm
@@ -86,3 +87,9 @@ class DataLoader:
         df['peptide_mass'] = df['sequence'].apply(mass.calculate_mass)
         df.sort_values(by=['peptide_mass'], ascending=True, inplace=True)
         return df
+
+    def create_directories(self):
+        """Create necessary directories for the analysis."""
+        directories = ['data', 'results']
+        for directory in directories:
+            os.makedirs(directory, exist_ok=True)

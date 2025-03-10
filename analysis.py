@@ -8,6 +8,8 @@ from visualization import SpectrumVisualizer
 
 def main():
     loader = DataLoader()
+    # create the results/ and data/ directories if not already present
+    loader.create_directories()
 
     fasta_df = loader.load_fasta("data/uniprotkb_human_proteins_isoforms.fasta")
     
@@ -16,9 +18,9 @@ def main():
 
     # TODO: Load MGF files
     mgf_files = [
-        "new_CTR03_BA46_INSOLUBLE_01.mgf",
-        "new_CTR08_BA46_INSOLUBLE_01.mgf",
-        "new_CTR45_BA46_INSOLUBLE_01.mgf"
+        "data/new_CTR03_BA46_INSOLUBLE_01.mgf",
+        "data/new_CTR08_BA46_INSOLUBLE_01.mgf",
+        "data/new_CTR45_BA46_INSOLUBLE_01.mgf"
     ]
     mgf_df = loader.load_mgf_files(mgf_files, "data/mgf_df.csv")
 
@@ -29,7 +31,7 @@ def main():
     n_processes = 15
     
     result_df = matcher.match_spectra_parallel(
-        mgf_df,
+        mgf_df.loc[:100], # Limit to first 100 spectra for testing
         scoring_functions,
         n_processes
     )
