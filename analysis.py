@@ -27,7 +27,7 @@ def main():
 
     # Run analysis
     scoring_functions = [optimize_q_wrapper, simple_scoring_function]
-    result_df = matcher.match_spectra(mgf_df[:100], scoring_functions)
+    result_df = matcher.match_spectra(mgf_df, scoring_functions)
     
     # Save results
     result_df.to_csv("results/matched_spectra_df.csv")
