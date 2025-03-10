@@ -20,7 +20,7 @@ class SpectrumMatcher:
         if best_match[0] == -1:
             return None
 
-        return self._create_match_result(spectrum, best_match, candidates, is_target_db)
+        return self._create_match_result(spectrum, best_match, candidates, is_target_db, scoring_function)
 
     def match_spectra(self, 
                      spectra_df: pd.DataFrame, 
@@ -80,7 +80,8 @@ class SpectrumMatcher:
                            spectrum: Dict[str, Any], 
                            best_match: tuple, 
                            candidates: pd.DataFrame,
-                           is_target_db: bool) -> Dict[str, Any]:
+                           is_target_db: bool,
+                           scoring_function: Callable) -> Dict[str, Any]:
         """Create result dictionary for a matched spectrum."""
         match_score, sequence, source_protein_id = best_match
         bm = candidates[candidates['sequence'] == sequence]
@@ -98,6 +99,7 @@ class SpectrumMatcher:
             'match_score': match_score,
             'scan_id': spectrum['scan_id'],
             'is_target': is_target_db,
+            'scoring_function': scoring_function.__name__
         }
 
     @staticmethod
