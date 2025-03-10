@@ -21,7 +21,7 @@ class SpectrumVisualizer:
         self.df['log2_match_score'] = np.log2(self.df['match_score'].clip(lower=1e-9))
         
         # Clean up data
-        self.df = self.df.replace([-np.inf, np.inf], np.nan).dropna(subset=['log2_match_score'])
+        self.df['log2_match_score'] = self.df['log2_match_score'].replace([-np.inf, np.inf], np.nan).dropna()
 
     def plot_score_distributions(self) -> None:
         """Plot score distributions using KDE plots."""
