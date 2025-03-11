@@ -14,55 +14,56 @@ def get_scan_id(text: str) -> str:
     return matches[0].split('=')[1]
 
 
-def calculate_fdr(df: pd.DataFrame, target_fdr: float = 0.01) -> pd.DataFrame:
+def calculate_fdr(df: pd.DataFrame, target_fdr: float = 0.01, filter: bool = False) -> pd.DataFrame:
     """
-    Calculate false discovery rate and determine score threshold for desired FDR.
+    Calculate false discovery rate and determine score threshold for desired FDR,
+    processing each experiment and scoring function combination separately.
 
     Args:
         df: DataFrame with matched spectra results
         target_fdr: Target FDR threshold (default: 0.01 or 1%)
+        filter: Whether to filter results to those above score threshold
 
     Returns:
-        DataFrame with added FDR column and filtered to target FDR
+        DataFrame with added FDR columns and filtered to target FDR
     """
     result_dfs = []
 
-    # Process each scoring function separately
-    for scoring_function, df_slice in df.groupby('scoring_function'):
+    # Group by both experiment and scoring function
+    for (experiment, scoring_function), df_slice in df.groupby(['experiment_name', 'scoring_function']):
         # Sort by match score in descending order (better scores first)
         df_slice = df_slice.sort_values(by='match_score', ascending=False).reset_index(drop=True)
 
-        # Count cumulative targets and decoys at each threshold
+        # Calculate cumulative counts within this experiment/scoring function combination
         df_slice['cumulative_targets'] = df_slice['is_target'].cumsum()
         df_slice['cumulative_decoys'] = (~df_slice['is_target']).cumsum()
 
-        # Calculate FDR at each position using FDR = FP / (FP + TP)
-        # where FP = decoys and (FP + TP) = total accepted matches
+        # Calculate FDR at each position: FDR = decoys / (decoys + targets)
         df_slice['fdr'] = df_slice['cumulative_decoys'] / (
-                    df_slice['cumulative_decoys'] + df_slice['cumulative_targets'])
+                df_slice['cumulative_decoys'] + df_slice['cumulative_targets'])
 
-        # Find the threshold where FDR is closest to but not exceeding target_fdr
-        threshold_idx = df_slice[df_slice['fdr'] <= target_fdr].index.max()
+        # Find the threshold where FDR first exceeds target
+        valid_fdr = df_slice[df_slice['fdr'] <= target_fdr]
+        threshold_idx = valid_fdr.index.max() if not valid_fdr.empty else None
 
         if threshold_idx is not None:
-            # Get the score threshold
+            # Get threshold values
             score_threshold = df_slice.loc[threshold_idx, 'match_score']
+            achieved_fdr = df_slice.loc[threshold_idx, 'fdr']
 
-            # Filter dataset to keep only results above the threshold
-            filtered_df = df_slice[df_slice['match_score'] >= score_threshold].copy()
+            # Filter if requested
+            if filter:
+                filtered_df = df_slice[df_slice['match_score'] >= score_threshold].copy()
+            else:
+                filtered_df = df_slice.copy()
 
-            # Add threshold information
+            # Add threshold metadata
             filtered_df['score_threshold'] = score_threshold
-            filtered_df['achieved_fdr'] = filtered_df.loc[threshold_idx, 'fdr']
-            filtered_df['scoring_function'] = scoring_function
+            filtered_df['achieved_fdr'] = achieved_fdr
 
             result_dfs.append(filtered_df)
 
-    # Combine results from all scoring functions
-    if result_dfs:
-        return pd.concat(result_dfs, ignore_index=True)
-    else:
-        return pd.DataFrame()
+    return pd.concat(result_dfs, ignore_index=True) if result_dfs else pd.DataFrame()
 
 
 def generate_fragments(peptide: str, types: Tuple[str, ...]=('b', 'y'), maxcharge: int=1) -> List[float]:
