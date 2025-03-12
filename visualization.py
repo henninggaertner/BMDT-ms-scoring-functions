@@ -14,10 +14,10 @@ class SpectrumVisualizer:
         """Prepare data for visualization."""
         # Add decoy identification
         self.df['side'] = self.df['protein_id'].str.contains('XXX_', na=False).map(
-            {True: 'Decoys', False: 'Non-decoys'})
+            {True: 'Decoys', False: 'Targets'})
 
         # Add log transformed scores
-        self.df['log2_match_score'] = np.log2(self.df['match_score'].clip(lower=1e-9))
+        self.df['log2_match_score'] = np.log2(self.df['match_score'].clip(lower=-0.0))
 
         # Clean up data
         self.df['log2_match_score'] = self.df['log2_match_score'].replace([-np.inf, np.inf], np.nan).dropna()
@@ -36,14 +36,15 @@ class SpectrumVisualizer:
             Example: {'XCorr': (0, 0.5), 'HyperScore': (0, 0.3)}
         """
         # Create FacetGrid with sharex and sharey set to False
+        sns.set_style("whitegrid")
         g = sns.FacetGrid(self.df, col='experiment_name', row='scoring_function', hue='side',
-            palette={'Decoys': 'blue', 'Non-decoys': 'red'}, height=4, aspect=1.5, sharex=False,
+            palette={'Decoys': 'blue', 'Targets': 'red'}, height=4, aspect=1.5, sharex=False,
             # Allow different x-axis ranges
             sharey=False  # Allow different y-axis ranges
         )
 
         # Map the plot function
-        g.map(sns.kdeplot, 'log2_match_score', fill=True, alpha=0.5, linewidth=1.5)
+        g.map(sns.kdeplot, 'log2_match_score', bw_adjust=1, fill=True, alpha=0.5, linewidth=1.5)
         g.set_axis_labels('log2(Match Score)', 'Density', fontsize=12)
         g.set_titles(col_template='Experiment: {col_name}', row_template='Scoring: {row_name}', size=12)
 
@@ -51,7 +52,7 @@ class SpectrumVisualizer:
         g.fig.suptitle(title, fontsize=16, y=1.02)
 
         # Add legend to the top right
-        g.add_legend(title='Category', loc='upper right', bbox_to_anchor=(1.05, 1), frameon=True)
+        g.add_legend(title='Category', loc='upper right', bbox_to_anchor=(1.05, 0.5), frameon=True)
 
         # Calculate sensible limits for each scoring function if not provided
         if custom_xlims is None:
@@ -76,7 +77,7 @@ class SpectrumVisualizer:
                 # Loop through each experiment to find the maximum density across all experiments
                 for exp in self.df['experiment_name'].unique():
                     # Get data for the current scoring function, experiment, and both sides
-                    for side in ['Decoys', 'Non-decoys']:
+                    for side in ['Decoys', 'Targets']:
                         subset = self.df[(self.df['scoring_function'] == func) & (self.df['experiment_name'] == exp) & (
                                     self.df['side'] == side)]['log2_match_score']
 
@@ -107,8 +108,8 @@ class SpectrumVisualizer:
     def plot_violin_distributions(self) -> None:
         """Plot score distributions using violin plots."""
         fig = px.violin(self.df, x='scoring_function', y='match_score', color='side', facet_col='experiment_name',
-            box=True, points="outliers", title='Match Score Distribution: Decoys vs. Non-decoys',
-            category_orders={'side': ['Decoys', 'Non-decoys'],
+            box=True, points="outliers", title='Match Score Distribution: Decoys vs. Targets',
+            category_orders={'side': ['Decoys', 'Targets'],
                 'scoring_function': sorted(self.df['scoring_function'].unique()),
                 'experiment_name': sorted(self.df['experiment_name'].unique())},
             labels={'match_score': 'Match Score', 'scoring_function': 'Scoring Function'}, log_y=True)
