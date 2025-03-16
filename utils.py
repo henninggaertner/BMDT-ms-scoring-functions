@@ -62,6 +62,8 @@ def calculate_fdr(df: pd.DataFrame, target_fdr: float = 0.01, filter: bool = Fal
             filtered_df['achieved_fdr'] = achieved_fdr
 
             result_dfs.append(filtered_df)
+        else: # No valid threshold found
+            result_dfs.append(df_slice)
 
     return pd.concat(result_dfs, ignore_index=True) if result_dfs else pd.DataFrame()
 
