@@ -111,6 +111,14 @@ def optimize_q_wrapper(theoretical_spectrum: np.ndarray, experimental_spectrum: 
             break
     return max_score
 
+def optimize_q_wrapper_no_early_stopping(theoretical_spectrum: np.ndarray, experimental_spectrum: np.ndarray, t: float) -> int:
+    max_score = -np.inf
+    for i in range(2, 101):
+        score = scoring_function(theoretical_spectrum, experimental_spectrum, i, t)
+        if score > max_score:
+            max_score = score
+    return max_score
+
 
 def time_execution(func):
     @wraps(func)
